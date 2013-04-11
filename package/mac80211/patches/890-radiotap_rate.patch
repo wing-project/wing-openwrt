@@ -1,0 +1,145 @@
+--- a/include/net/mac80211.h
++++ b/include/net/mac80211.h
+@@ -391,6 +391,9 @@
+  * @IEEE80211_TX_CTL_DONTFRAG: Don't fragment this packet even if it
+  *	would be fragmented by size (this is optional, only used for
+  *	monitor injection).
++ * @IEEE80211_TX_CTL_NO_RC: This frame does not require rate control.
++ *	This flag is used when an injected frame includes a transmit
++ *	rate (and possibly flags and retry count) in the radiotap header.
+  *
+  * Note: If you have to add new flags to the enumeration, then don't
+  *	 forget to update %IEEE80211_TX_TEMPORARY_FLAGS when necessary.
+@@ -425,6 +428,7 @@
+ 	IEEE80211_TX_STATUS_EOSP		= BIT(28),
+ 	IEEE80211_TX_CTL_USE_MINRATE		= BIT(29),
+ 	IEEE80211_TX_CTL_DONTFRAG		= BIT(30),
++	IEEE80211_TX_CTL_NO_RC			= BIT(31),
+ };
+ 
+ #define IEEE80211_TX_CTL_STBC_SHIFT		23
+--- a/net/mac80211/tx.c
++++ b/net/mac80211/tx.c
+@@ -1333,7 +1333,8 @@
+ 	CALL_TXH(ieee80211_tx_h_ps_buf);
+ 	CALL_TXH(ieee80211_tx_h_check_control_port_protocol);
+ 	CALL_TXH(ieee80211_tx_h_select_key);
+-	if (!(tx->local->hw.flags & IEEE80211_HW_HAS_RATE_CONTROL))
++	if (!(tx->local->hw.flags & IEEE80211_HW_HAS_RATE_CONTROL) &&
++	    !(info->flags & IEEE80211_TX_CTL_NO_RC))
+ 		CALL_TXH(ieee80211_tx_h_rate_ctrl);
+ 
+ 	if (unlikely(info->flags & IEEE80211_TX_INTFL_RETRANSMISSION)) {
+@@ -1491,7 +1492,8 @@
+ 	rcu_read_unlock();
+ }
+ 
+-static bool ieee80211_parse_tx_radiotap(struct sk_buff *skb)
++static bool ieee80211_parse_tx_radiotap(struct sk_buff *skb,
++					struct ieee80211_local *local)
+ {
+ 	struct ieee80211_radiotap_iterator iterator;
+ 	struct ieee80211_radiotap_header *rthdr =
+@@ -1499,7 +1501,11 @@
+ 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+ 	int ret = ieee80211_radiotap_iterator_init(&iterator, rthdr, skb->len,
+ 						   NULL);
++	u8 fixed_rate[IEEE80211_TX_MAX_RATES] = { -1 };
++	u8 fixed_rate_data_retries[IEEE80211_TX_MAX_RATES] = { 0 };
++	u32 fixed_rate_flags[IEEE80211_TX_MAX_RATES] = { 0 };
+ 	u16 txflags;
++	u8 idx = 0;
+ 
+ 	info->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT |
+ 		       IEEE80211_TX_CTL_DONTFRAG;
+@@ -1544,12 +1550,43 @@
+ 				info->flags &= ~IEEE80211_TX_CTL_DONTFRAG;
+ 			break;
+ 
++		case IEEE80211_RADIOTAP_RATE:		/* u8 */
++			fixed_rate[idx] = *iterator.this_arg;
++			idx++;
++			break;
++
+ 		case IEEE80211_RADIOTAP_TX_FLAGS:
+ 			txflags = get_unaligned_le16(iterator.this_arg);
+ 			if (txflags & IEEE80211_RADIOTAP_F_TX_NOACK)
+ 				info->flags |= IEEE80211_TX_CTL_NO_ACK;
+ 			break;
+ 
++		case IEEE80211_RADIOTAP_DATA_RETRIES:	/* u8 */
++
++			if (fixed_rate[idx] == -1)
++				fixed_rate_data_retries[idx-1] = *iterator.this_arg;
++			else
++				fixed_rate_data_retries[idx] = *iterator.this_arg;
++
++			break;
++
++		case IEEE80211_RADIOTAP_MCS: {		/* u8,u8,u8 */
++			u8 mcs_have = iterator.this_arg[0];
++			if (mcs_have & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
++				fixed_rate[idx] = iterator.this_arg[2];
++				fixed_rate_flags[idx] |= IEEE80211_TX_RC_MCS;
++			}
++			if ((mcs_have & IEEE80211_RADIOTAP_MCS_HAVE_GI) &&
++			    (iterator.this_arg[1] & IEEE80211_RADIOTAP_MCS_SGI))
++				fixed_rate_flags[idx] |= IEEE80211_TX_RC_SHORT_GI;
++			if ((mcs_have & IEEE80211_RADIOTAP_MCS_HAVE_BW) &&
++			    (iterator.this_arg[1]&IEEE80211_RADIOTAP_MCS_BW_40))
++				fixed_rate_flags[idx] |=
++					IEEE80211_TX_RC_40_MHZ_WIDTH;
++			idx++;
++			break;
++		}
++
+ 		/*
+ 		 * Please update the file
+ 		 * Documentation/networking/mac80211-injection.txt
+@@ -1564,6 +1601,37 @@
+ 	if (ret != -ENOENT) /* ie, if we didn't simply run out of fields */
+ 		return false;
+ 
++	struct ieee80211_channel *chan = local->hw.conf.channel;
++	struct ieee80211_supported_band *sband =
++		local->hw.wiphy->bands[chan->band];
++	struct ieee80211_tx_rate *rates = info->control.rates;
++
++	int i;
++	for (i = 0; i < IEEE80211_TX_MAX_RATES; i++) {
++
++		if (fixed_rate_flags[i] & IEEE80211_TX_RC_MCS) {
++			WARN_ON(!sband->ht_cap.ht_supported);
++			rates[i].idx = fixed_rate[i];
++		} else {
++			/* convert legacy rate; NB: .5 Mb/s -> 100 kb/s */
++			int bitrate = fixed_rate[i]*5;
++			rates[i].idx = 0;	/* default to lowest rate */
++			int j;
++			for (j = 0; j < sband->n_bitrates; j++)
++				if (bitrate == sband->bitrates[j].bitrate) {
++					rates[i].idx = j;
++					break;
++				}
++		}
++
++		rates[i].count = 1+fixed_rate_data_retries[i];
++		if (rates[i].count > local->hw.max_rate_tries)
++			rates[i].count = local->hw.max_rate_tries;
++		rates[i].flags = fixed_rate_flags[i];
++
++		info->flags |= IEEE80211_TX_CTL_NO_RC;
++	}
++
+ 	/*
+ 	 * remove the radiotap header
+ 	 * iterator->_max_length was sanity-checked against
+@@ -1664,7 +1732,7 @@
+ 		      IEEE80211_TX_CTL_INJECTED;
+ 
+ 	/* process and remove the injection radiotap header */
+-	if (!ieee80211_parse_tx_radiotap(skb))
++	if (!ieee80211_parse_tx_radiotap(skb, local))
+ 		goto fail;
+ 
+ 	rcu_read_lock();
