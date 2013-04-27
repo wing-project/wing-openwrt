@@ -100,9 +100,9 @@
  	if (ret != -ENOENT) /* ie, if we didn't simply run out of fields */
  		return false;
  
-+	struct ieee80211_channel *chan = local->hw.conf.channel;
-+	struct ieee80211_supported_band *sband =
-+		local->hw.wiphy->bands[chan->band];
++
++	struct ieee80211_supported_band *sband = 
++		local->hw.wiphy->bands[info->band];
 +	struct ieee80211_tx_rate *rates = info->control.rates;
 +
 +	int i;
