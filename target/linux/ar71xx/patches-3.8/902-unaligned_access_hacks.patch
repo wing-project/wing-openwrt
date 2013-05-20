@@ -191,7 +191,7 @@
  /*
 --- a/net/ipv4/tcp_input.c
 +++ b/net/ipv4/tcp_input.c
-@@ -3868,13 +3868,14 @@ static bool tcp_parse_aligned_timestamp(
+@@ -3896,13 +3896,14 @@ static bool tcp_parse_aligned_timestamp(
  {
  	const __be32 *ptr = (const __be32 *)(th + 1);
  
@@ -279,7 +279,7 @@
  #include <asm/uaccess.h>
  
  #include <linux/proc_fs.h>
-@@ -763,10 +764,10 @@ static void tcp_v6_send_response(struct
+@@ -764,10 +765,10 @@ static void tcp_v6_send_response(struct
  	topt = (__be32 *)(t1 + 1);
  
  	if (ts) {
@@ -915,17 +915,6 @@
  
  #define IP_TOS		1
  #define IP_TTL		2
---- a/include/uapi/linux/xfrm.h
-+++ b/include/uapi/linux/xfrm.h
-@@ -13,7 +13,7 @@
- typedef union {
- 	__be32		a4;
- 	__be32		a6[4];
--} xfrm_address_t;
-+} __attribute__((packed, aligned(2))) xfrm_address_t;
- 
- /* Ident of a specific xfrm_state. It is used on input to lookup
-  * the state by (spi,daddr,ah/esp) or to store information about
 --- a/net/core/secure_seq.c
 +++ b/net/core/secure_seq.c
 @@ -43,10 +43,11 @@ __u32 secure_tcpv6_sequence_number(const
