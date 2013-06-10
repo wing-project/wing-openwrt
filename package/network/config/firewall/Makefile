@@ -8,19 +8,18 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=firewall
-PKG_VERSION:=2013-06-05
+PKG_VERSION:=2013-06-06
 PKG_RELEASE:=$(PKG_SOURCE_VERSION)
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=git://nbd.name/firewall3.git
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-PKG_SOURCE_VERSION:=6e6a38ea87aebeaefe70869c226cadad0312f144
+PKG_SOURCE_VERSION:=52d62c3d4654c39b39f4851d2884884e0c104b24
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_MAINTAINER:=Jo-Philipp Wich <jow@openwrt.org>
 
 
 include $(INCLUDE_DIR)/package.mk
-include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 define Package/firewall
@@ -40,9 +39,7 @@ define Package/firewall/conffiles
 endef
 
 define Build/Configure
-	$(foreach file,$(lastword $(wildcard $(KERNEL_BUILD_DIR)/iptables-*/extensions/libext.a)),$(CP) $(file) $(PKG_BUILD_DIR)/libext.a)
-	$(foreach file,$(lastword $(wildcard $(KERNEL_BUILD_DIR)/iptables-*/extensions/libext4.a)),$(CP) $(file) $(PKG_BUILD_DIR)/libext4.a)
-	$(foreach file,$(lastword $(wildcard $(KERNEL_BUILD_DIR)/iptables-*/extensions/libext6.a)),$(CP) $(file) $(PKG_BUILD_DIR)/libext6.a)
+	$(foreach file,$(wildcard $(STAGING_DIR)/usr/lib/iptables/libext*.a),$(CP) $(file) $(PKG_BUILD_DIR)/$(notdir $(file));)
 	$(call Build/Configure/Default)
 endef
 
