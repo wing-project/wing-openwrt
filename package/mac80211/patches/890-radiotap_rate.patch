@@ -1,26 +1,28 @@
---- a/include/net/mac80211.h
-+++ b/include/net/mac80211.h
-@@ -391,6 +391,9 @@
-  * @IEEE80211_TX_CTL_DONTFRAG: Don't fragment this packet even if it
-  *	would be fragmented by size (this is optional, only used for
+diff -urN compat-wireless-2013-04-16.old/include/net/mac80211.h compat-wireless-2013-04-16/include/net/mac80211.h
+--- compat-wireless-2013-04-16.old/include/net/mac80211.h	2013-04-19 13:53:52.000000000 +0200
++++ compat-wireless-2013-04-16/include/net/mac80211.h	2013-06-10 20:51:41.680573293 +0200
+@@ -459,6 +459,9 @@
   *	monitor injection).
+  * @IEEE80211_TX_CTL_PS_RESPONSE: This frame is a response to a poll
+  *	frame (PS-Poll or uAPSD).
 + * @IEEE80211_TX_CTL_NO_RC: This frame does not require rate control.
 + *	This flag is used when an injected frame includes a transmit
 + *	rate (and possibly flags and retry count) in the radiotap header.
   *
   * Note: If you have to add new flags to the enumeration, then don't
   *	 forget to update %IEEE80211_TX_TEMPORARY_FLAGS when necessary.
-@@ -425,6 +428,7 @@
- 	IEEE80211_TX_STATUS_EOSP		= BIT(28),
+@@ -494,6 +497,7 @@
  	IEEE80211_TX_CTL_USE_MINRATE		= BIT(29),
  	IEEE80211_TX_CTL_DONTFRAG		= BIT(30),
+	IEEE80211_TX_CTL_PS_RESPONSE		= BIT(31),
 +	IEEE80211_TX_CTL_NO_RC			= BIT(31),
  };
  
  #define IEEE80211_TX_CTL_STBC_SHIFT		23
---- a/net/mac80211/tx.c
-+++ b/net/mac80211/tx.c
-@@ -1333,7 +1333,8 @@
+diff -urN compat-wireless-2013-04-16.old/net/mac80211/tx.c compat-wireless-2013-04-16/net/mac80211/tx.c
+--- compat-wireless-2013-04-16.old/net/mac80211/tx.c	2013-04-19 13:53:52.000000000 +0200
++++ compat-wireless-2013-04-16/net/mac80211/tx.c	2013-06-10 20:55:18.265250518 +0200
+@@ -1366,7 +1366,8 @@
  	CALL_TXH(ieee80211_tx_h_ps_buf);
  	CALL_TXH(ieee80211_tx_h_check_control_port_protocol);
  	CALL_TXH(ieee80211_tx_h_select_key);
@@ -30,8 +32,8 @@
  		CALL_TXH(ieee80211_tx_h_rate_ctrl);
  
  	if (unlikely(info->flags & IEEE80211_TX_INTFL_RETRANSMISSION)) {
-@@ -1491,7 +1492,8 @@
- 	rcu_read_unlock();
+@@ -1520,7 +1521,8 @@
+ 	ieee80211_tx(sdata, skb, false, band);
  }
  
 -static bool ieee80211_parse_tx_radiotap(struct sk_buff *skb)
@@ -40,7 +42,7 @@
  {
  	struct ieee80211_radiotap_iterator iterator;
  	struct ieee80211_radiotap_header *rthdr =
-@@ -1499,7 +1501,11 @@
+@@ -1528,7 +1530,11 @@
  	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
  	int ret = ieee80211_radiotap_iterator_init(&iterator, rthdr, skb->len,
  						   NULL);
@@ -52,7 +54,7 @@
  
  	info->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT |
  		       IEEE80211_TX_CTL_DONTFRAG;
-@@ -1544,12 +1550,43 @@
+@@ -1573,12 +1579,43 @@
  				info->flags &= ~IEEE80211_TX_CTL_DONTFRAG;
  			break;
  
@@ -96,11 +98,10 @@
  		/*
  		 * Please update the file
  		 * Documentation/networking/mac80211-injection.txt
-@@ -1564,6 +1601,37 @@
+@@ -1593,6 +1630,36 @@
  	if (ret != -ENOENT) /* ie, if we didn't simply run out of fields */
  		return false;
  
-+
 +	struct ieee80211_supported_band *sband = 
 +		local->hw.wiphy->bands[info->band];
 +	struct ieee80211_tx_rate *rates = info->control.rates;
@@ -134,7 +135,7 @@
  	/*
  	 * remove the radiotap header
  	 * iterator->_max_length was sanity-checked against
-@@ -1664,7 +1732,7 @@
+@@ -1674,7 +1741,7 @@
  		      IEEE80211_TX_CTL_INJECTED;
  
  	/* process and remove the injection radiotap header */
