@@ -58,30 +58,21 @@ fs_64k:=64k
 fs_64kraw:=64kraw
 fs_128k:=128k
 fs_256k:=256k
-ifeq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),y)
-	fs_squash:=initramfs
-	fs_64k:=initramfs
-	fs_64kraw:=initramfs
-	fs_128k:=initramfs
-	fs_256k:=initramfs
-	VMLINUX:=$(BIN_DIR)/$(IMG_PREFIX)-vmlinux-initramfs
-	UIMAGE:=$(BIN_DIR)/$(IMG_PREFIX)-uImage-initramfs
-endif
 
 define CompressLzma
   $(STAGING_DIR_HOST)/bin/lzma e $(1) -lc1 -lp2 -pb2 $(3) $(2)
 endef
 
 define PatchKernelLzma
-	cp $(KDIR)/vmlinux $(KDIR_TMP)/vmlinux-$(1)
-	$(STAGING_DIR_HOST)/bin/patch-cmdline $(KDIR_TMP)/vmlinux-$(1) "$(strip $(2))"
-	$(call CompressLzma,$(KDIR_TMP)/vmlinux-$(1),$(KDIR_TMP)/vmlinux-$(1).bin.lzma,$(3))
+	cp $(KDIR)/vmlinux$(4) $(KDIR_TMP)/vmlinux$(4)-$(1)
+	$(STAGING_DIR_HOST)/bin/patch-cmdline $(KDIR_TMP)/vmlinux$(4)-$(1) "$(strip $(2))"
+	$(call CompressLzma,$(KDIR_TMP)/vmlinux$(4)-$(1),$(KDIR_TMP)/vmlinux$(4)-$(1).bin.lzma,$(3))
 endef
 
 define PatchKernelGzip
-	cp $(KDIR)/vmlinux $(KDIR_TMP)/vmlinux-$(1)
-	$(STAGING_DIR_HOST)/bin/patch-cmdline $(KDIR_TMP)/vmlinux-$(1) "$(strip $(2))"
-	gzip -9 -c $(KDIR_TMP)/vmlinux-$(1) > $(KDIR_TMP)/vmlinux-$(1).bin.gz
+	cp $(KDIR)/vmlinux$(3) $(KDIR_TMP)/vmlinux$(3)-$(1)
+	$(STAGING_DIR_HOST)/bin/patch-cmdline $(KDIR_TMP)/vmlinux$(3)-$(1) "$(strip $(2))"
+	gzip -9 -c $(KDIR_TMP)/vmlinux$(3)-$(1) > $(KDIR_TMP)/vmlinux$(3)-$(1).bin.gz
 endef
 
 define MkuImage
@@ -91,13 +82,13 @@ define MkuImage
 endef
 
 define MkuImageLzma
-	$(call PatchKernelLzma,$(1),$(2),$(3))
-	$(call MkuImage,lzma,,$(KDIR_TMP)/vmlinux-$(1).bin.lzma,$(KDIR_TMP)/vmlinux-$(1).uImage)
+	$(call PatchKernelLzma,$(1),$(2),$(3),$(4))
+	$(call MkuImage,lzma,,$(KDIR_TMP)/vmlinux$(4)-$(1).bin.lzma,$(KDIR_TMP)/vmlinux$(4)-$(1).uImage)
 endef
 
 define MkuImageLzma/initramfs
-	$(call PatchKernelLzma,$(1),$(2))
-	$(call MkuImage,lzma,,$(KDIR_TMP)/vmlinux-$(1).bin.lzma,$(call imgname,initramfs,$(1))-uImage.bin)
+	$(call PatchKernelLzma,$(1),$(2),,-initramfs)
+	$(call MkuImage,lzma,,$(KDIR_TMP)/vmlinux-initramfs-$(1).bin.lzma,$(call imgname,initramfs,$(1))-uImage.bin)
 endef
 
 define MkuImageGzip
@@ -106,8 +97,8 @@ define MkuImageGzip
 endef
 
 define MkuImageGzip/initramfs
-	$(call PatchKernelGzip,$(1),$(2))
-	$(call MkuImage,gzip,,$(KDIR_TMP)/vmlinux-$(1).bin.gz,$(call imgname,initramfs,$(1))-uImage.bin)
+	$(call PatchKernelGzip,$(1),$(2),-initramfs)
+	$(call MkuImage,gzip,,$(KDIR_TMP)/vmlinux-initramfs-$(1).bin.gz,$(call imgname,initramfs,$(1))-uImage.bin)
 endef
 
 define MkuImageOKLI
@@ -140,8 +131,9 @@ define Image/BuildLoader
 	-rm -rf $(KDIR)/lzma-loader
 	$(LOADER_MAKE) LOADER=loader-$(1).$(2) KERNEL_CMDLINE="$(3)"\
 		LZMA_TEXT_START=0x80a00000 LOADADDR=0x80060000 \
-		LOADER_DATA="$(KDIR)/vmlinux.bin.lzma" BOARD="$(1)" \
+		LOADER_DATA="$(KDIR)/vmlinux$(5).bin.lzma" BOARD="$(1)" \
 		compile loader.$(2)
+	-$(CP) $(KDIR)/loader-$(1).$(2) $(KDIR)/loader-$(1)$(5).$(2)
 endef
 
 define Image/BuildLoaderAlone
@@ -165,6 +157,7 @@ ap96_mtdlayout=mtdparts=spi0.0:192k(u-boot)ro,64k(u-boot-env)ro,6144k(rootfs),17
 ap113_mtd_layout=mtdparts=spi0.0:64k(u-boot),3008k(rootfs),896k(uImage),64k(NVRAM),64k(ART),3904k@0x10000(firmware)
 ap121_mtdlayout_2M=mtdparts=spi0.0:64k(u-boot)ro,1216k(rootfs),704k(kernel),64k(art)ro,1920k@0x10000(firmware)
 ap121_mtdlayout_4M=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,2752k(rootfs),896k(kernel),64k(nvram),64k(art)ro,3648k@0x50000(firmware)
+carambola2_mtdlayout_16M=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,2048k(kernel),13888k(rootfs),64k(nvram),64k(art)ro,15936k@0x50000(firmware)
 ap132_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1408k(kernel),6400k(rootfs),64k(art),7808k@0x50000(firmware)
 ap135_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,14528k(rootfs),1472k(kernel),64k(art)ro,16000k@0x50000(firmware)
 ap136_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,6336k(rootfs),1408k(kernel),64k(mib0),64k(art)ro,7744k@0x50000(firmware)
@@ -185,7 +178,7 @@ ubntxm_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1024k(kernel),
 uap_pro_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1536k(kernel),14208k(rootfs),256k(cfg)ro,64k(EEPROM)ro,15744k@0x50000(firmware)
 ubdev_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1024k(kernel),6464k(rootfs),64k(certs),256k(cfg)ro,64k(EEPROM)ro,7488k@0x50000(firmware)
 whrhpg300n_mtdlayout=mtdparts=spi0.0:248k(u-boot)ro,8k(u-boot-env)ro,1024k(kernel),2752k(rootfs),64k(art)ro,3712k@0x40000(firmware)
-wndap360_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1728k(kernel),6080k(rootfs),64k(art)ro,7808k@0x50000(firmware)
+wndap360_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1728k(kernel),6016k(rootfs),64k(nvram)ro,64k(art)ro,7744k@0x50000(firmware)
 wnr2000v3_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,1024k(kernel),2688k(rootfs),64k(art)ro,3712k@0x50000(firmware)
 wndr3700_mtdlayout=mtdparts=spi0.0:320k(u-boot)ro,128k(u-boot-env)ro,1024k(kernel),6656k(rootfs),64k(art)ro,7680k@0x70000(firmware)
 wndr3700v2_mtdlayout=mtdparts=spi0.0:320k(u-boot)ro,128k(u-boot-env)ro,1024k(kernel),14848k(rootfs),64k(art)ro,15872k@0x70000(firmware)
@@ -201,7 +194,16 @@ define Image/BuildKernel
 	$(call MkuImage,lzma,,$(KDIR)/vmlinux.bin.lzma,$(UIMAGE)-lzma.bin)
 	cp $(KDIR)/loader-generic.elf $(VMLINUX)-lzma.elf
 	-mkdir -p $(KDIR_TMP)
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+	cp $(KDIR)/vmlinux-initramfs.elf $(VMLINUX)-initramfs.elf
+	cp $(KDIR)/vmlinux-initramfs $(VMLINUX)-initramfs.bin
+	dd if=$(KDIR)/vmlinux-initramfs.bin.lzma of=$(VMLINUX)-initramfs.lzma bs=65536 conv=sync
+	dd if=$(KDIR)/vmlinux-initramfs.bin.gz of=$(VMLINUX)-initramfs.gz bs=65536 conv=sync
+	$(call MkuImage,gzip,,$(KDIR)/vmlinux-initramfs.bin.gz,$(UIMAGE)-initramfs-gzip.bin)
+	$(call MkuImage,lzma,,$(KDIR)/vmlinux-initramfs.bin.lzma,$(UIMAGE)-initramfs-lzma.bin)
+	cp $(KDIR)/loader-generic-initramfs.elf $(VMLINUX)-initramfs-lzma.elf
 	$(call Image/Build/Initramfs)
+endif
 endef
 
 define Image/Build/WRT400N
@@ -547,11 +549,11 @@ define Image/Build/TPLINKOLD
 endef
 
 define Image/Build/TPLINKOLD/initramfs
-	$(call Image/BuildLoader,$(2),gz,$(3),0x80060000)
+	$(call Image/BuildLoader,$(2),gz,$(3),0x80060000,-initramfs)
 	-$(STAGING_DIR_HOST)/bin/mktplinkfw -c \
 		-H $(4) -W $(5) -F $(6) -N OpenWrt -V $(REVISION) -s\
-		-k $(KDIR)/loader-$(2).gz \
-		-o $(call imgname,$(1),$(2))-uImage.bin
+		-k $(KDIR)/loader-$(2)-initramfs.gz \
+		-o $(call imgname,$(1),$(2))-initramfs-uImage.bin
 endef
 
 define Image/Build/TPLINK/loader
@@ -580,10 +582,10 @@ define Image/Build/TPLINK
 endef
 
 define Image/Build/TPLINK/initramfs
-	$(call Image/BuildLoader,$(2),gz,$(3),0x80060000)
+	$(call Image/BuildLoader,$(2),gz,$(3),0x80060000,-initramfs)
 	-$(STAGING_DIR_HOST)/bin/mktplinkfw -c \
 		-H $(4) -W $(5) -F $(6) -N OpenWrt -V $(REVISION) -s\
-		-k $(KDIR)/loader-$(2).gz \
+		-k $(KDIR)/loader-$(2)-initramfs.gz \
 		-o $(call imgname,$(1),$(2))-uImage.bin
 endef
 
@@ -604,10 +606,10 @@ define Image/Build/TPLINK-LZMA
 endef
 
 define Image/Build/TPLINK-LZMA/initramfs
-	$(call PatchKernelLzma,$(2),$(3))
+	$(call PatchKernelLzma,$(2),$(3),,-initramfs)
 	-$(STAGING_DIR_HOST)/bin/mktplinkfw -c \
 		-H $(4) -W $(5) -F $(6) -N OpenWrt -V $(REVISION) $(7) -s \
-		-k $(KDIR_TMP)/vmlinux-$(2).bin.lzma \
+		-k $(KDIR_TMP)/vmlinux-initramfs-$(2).bin.lzma \
 		-o $(call imgname,$(1),$(2))-uImage.bin
 endef
 
@@ -700,10 +702,10 @@ define Image/Build/Netgear
 endef
 
 define Image/Build/Netgear/initramfs
-	$(call MkuImageLzma,$(2),$(3) $(4))
+	$(call MkuImageLzma,$(2),$(3) $(4),,-initramfs)
 	$(STAGING_DIR_HOST)/bin/wndr3700 \
-		$(KDIR_TMP)/vmlinux-$(2).uImage \
-		$(call imgname,$(1),$(2))-uImage.bin \
+		$(KDIR_TMP)/vmlinux-initramfs-$(2).uImage \
+		$(call imgname,$(1),$(2))-initramfs-uImage.bin \
 		$(5)
 endef
 
@@ -756,10 +758,6 @@ endef
 
 define Image/Build/Zcomax/initramfs
 	$(call MkuImageLzma/initramfs,$(2),$(3) $(4))
-endef
-
-define Image/Build/Template/initramfs/initramfs
-	$(call Image/Build/$(1)/initramfs,initramfs,$(2),$(3),$(4),$(5),$(6),$(7),$(8))
 endef
 
 define Image/Build/Template/all/squashfs
@@ -826,6 +824,22 @@ define Image/Build/Template/256k/jffs2-256k
 	$(call Image/Build/$(1),jffs2-256k,$(2),$(3),$(4),$(5),$(6),$(7),$(8))
 endef
 
+define Image/Build/Template/64k/initramfs
+	$(call Image/Build/$(1)/initramfs,initramfs,$(2),$(3),$(4),$(5),$(6),$(7),$(8))
+endef
+
+define Image/Build/Template/64kraw/initramfs
+	$(call Image/Build/$(1)/initramfs,initramfs,$(2),$(3),$(4),$(5),$(6),$(7),$(8))
+endef
+
+define Image/Build/Template/128k/initramfs
+	$(call Image/Build/$(1)/initramfs,initramfs,$(2),$(3),$(4),$(5),$(6),$(7),$(8))
+endef
+
+define Image/Build/Template/256k/initramfs
+	$(call Image/Build/$(1)/initramfs,initramfs,$(2),$(3),$(4),$(5),$(6),$(7),$(8))
+endef
+
 $(eval $(call SingleProfile,ALFA,$(fs_64k),ALFANX,alfa-nx,ALFA-NX,ttyS0,115200,$$(alfa_mtdlayout_8M),1638400,6291456,vmlinux.gz.uImage,pb9x-2.6.31-jffs2))
 $(eval $(call SingleProfile,ALFA,$(fs_64k),HORNETUB,hornet-ub,HORNET-UB,ttyATH0,115200,$$(alfa_mtdlayout_8M),1638400,6291456,kernel_image,rootfs_image))
 
@@ -839,6 +853,7 @@ $(eval $(call SingleProfile,AthLzma,$(fs_256k),ALL0315N,all0315n,ALL0315N,ttyS0,
 $(eval $(call SingleProfile,AthLzma,$(fs_64k),AP113,ap113,AP113,ttyS0,115200,$$(ap113_mtd_layout),917504,3080192,RK))
 $(eval $(call SingleProfile,AthLzma,$(fs_64k),AP121_2M,ap121-2M,AP121,ttyATH0,115200,$$(ap121_mtdlayout_2M),720896,1245184,RKuImage))
 $(eval $(call SingleProfile,AthLzma,$(fs_64k),AP121_4M,ap121-4M,AP121,ttyATH0,115200,$$(ap121_mtdlayout_4M),917504,2818048,RKuImage))
+$(eval $(call SingleProfile,AthLzma,$(fs_64k),CARAMBOLA2,carambola2,CARAMBOLA2,ttyATH0,115200,$$(carambola2_mtdlayout_16M),2097152,14221312,KRuImage))
 $(eval $(call SingleProfile,AthLzma,$(fs_64k),AP121MINI,ap121-mini,AP121-MINI,ttyATH0,115200,$$(ap121_mtdlayout_4M),917504,2818048,RKuImage))
 $(eval $(call SingleProfile,AthLzma,$(fs_64k),AP132,ap132,AP132,ttyS0,115200,$$(ap132_mtdlayout),1441792,6553600,KRuImage))
 $(eval $(call SingleProfile,AthLzma,$(fs_64k),AP135,ap135-020,AP135-020,ttyS0,115200,$$(ap135_mtdlayout),1507328,14876672,RKuImage))
@@ -883,7 +898,7 @@ $(eval $(call SingleProfile,MyLoader,$(fs_64k),WPE72_8M,wpe72,,ttyS0,115200,0x80
 $(eval $(call SingleProfile,MyLoader,$(fs_64k),WPE72_16M,wpe72,,ttyS0,115200,0x1000000,16M))
 
 # This is used with AthGzip profile for now
-$(eval $(call SingleProfile,AthGzip,$(fs_64k),WNDAP360,wndap360,WNDAP360,ttyS0,9600,$$(wndap360_mtdlayout),1769472,6225920,KRuImage))
+$(eval $(call SingleProfile,AthGzip,$(fs_64k),WNDAP360,wndap360,WNDAP360,ttyS0,9600,$$(wndap360_mtdlayout),1769472,6160384,KRuImage))
 $(eval $(call SingleProfile,Netgear,$(fs_64k),WNR2000V3,wnr2000v3,WNR2000V3,ttyS0,115200,$$(wnr2000v3_mtdlayout),2003,WNR2000V3,"" NA,))
 $(eval $(call SingleProfile,Netgear,$(fs_64k),WNDR3700V1,wndr3700,WNDR3700,ttyS0,115200,$$(wndr3700_mtdlayout),3700,WNDR3700,"" NA,))
 $(eval $(call SingleProfile,Netgear,$(fs_64k),WNDR3700V2,wndr3700v2,WNDR3700,ttyS0,115200,$$(wndr3700v2_mtdlayout),3701,WNDR3700v2,"",-H 29763654+16+64))
@@ -1030,6 +1045,11 @@ endef
 define Image/Prepare
 	gzip -9 -c $(KDIR)/vmlinux > $(KDIR)/vmlinux.bin.gz
 	$(call CompressLzma,$(KDIR)/vmlinux,$(KDIR)/vmlinux.bin.lzma)
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+	gzip -9 -c $(KDIR)/vmlinux-initramfs > $(KDIR)/vmlinux-initramfs.bin.gz
+	$(call CompressLzma,$(KDIR)/vmlinux-initramfs,$(KDIR)/vmlinux-initramfs.bin.lzma)
+	$(call Image/BuildLoader,generic,elf,,,-initramfs)
+endif
 	$(call Image/BuildLoader,generic,elf)
 	$(call Image/Build/Profile/$(if $(CONFIG_IB),Default,$(PROFILE)),loader)
 endef

@@ -551,7 +551,7 @@ define KernelPackage/serial-8250
 	CONFIG_SERIAL_8250_SHARE_IRQ=y \
 	CONFIG_SERIAL_8250_DETECT_IRQ=n \
 	CONFIG_SERIAL_8250_RSA=n
-  FILES:=$(LINUX_DIR)/drivers/tty/serial/8250/8250$(if $(call kernel_patchver_ge,3.7),$(if $(call kernel_patchver_le,3.9),_core)).ko
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/8250/8250$(if $(call kernel_patchver_ge,3.7),$(if $(call kernel_patchver_le,3.8),_core)).ko
 endef
 
 define KernelPackage/serial-8250/description
@@ -684,3 +684,17 @@ define KernelPacakge/ptp-gianfar/description
 endef
 
 $(eval $(call KernelPackage,ptp-gianfar))
+
+define KernelPackage/random-core
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Hardware Random Number Generator Core support
+  KCONFIG:=CONFIG_HW_RANDOM
+  FILES:=$(LINUX_DIR)/drivers/char/hw_random/rng-core.ko
+  AUTOLOAD:=$(call AutoLoad,10,rng-core)
+endef
+
+define KernelPackage/random-core/description
+   Kernel module for the HW random number generator core infrastructure
+endef
+
+$(eval $(call KernelPackage,random-core))
