@@ -24,6 +24,7 @@ platform_check_image() {
 	all5002 | \
 	all5003 | \
 	asl26555 | \
+	awm002-evb | \
 	bc2 | \
 	broadway | \
 	carambola | \
@@ -42,6 +43,7 @@ platform_check_image() {
 	rt-n13u | \
 	freestation5 | \
 	hw550-3g | \
+	hg255d | \
 	mofi3500-3gn | \
 	mpr-a2 | \
 	mzk-w300nh2 | \

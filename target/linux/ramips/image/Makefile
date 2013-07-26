@@ -114,6 +114,10 @@ ralink_default_fw_size_8M=8060928
 BuildFirmware/Default8M/squashfs=$(call BuildFirmware/OF,$(1),$(2),$(3),$(ralink_default_fw_size_8M),$(4))
 BuildFirmware/Default8M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3),$(4))
 
+ralink_default_fw_size_16M=16121856
+BuildFirmware/Default16M/squashfs=$(call BuildFirmware/OF,$(1),$(2),$(3),$(ralink_default_fw_size_16M),$(4))
+BuildFirmware/Default16M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3),$(4))
+
 # Build images for a custom sized flash layout
 # $(1) = squashfs/initramfs
 # $(2) = lowercase board name
@@ -277,6 +281,8 @@ define BuildFirmware/ASL26555/initramfs
 endef
 Image/Build/Profile/ASL26555=$(call BuildFirmware/ASL26555/$(1),$(1),asl26555,ASL26555)
 
+Image/Build/Profile/AWM002-EVB=$(call BuildFirmware/DefaultDualSize/$(1),$(1),awm002-evb,AWM002-EVB)
+
 Image/Build/Profile/BC2=$(call BuildFirmware/Default8M/$(1),$(1),bc2,BC2)
 
 broadway_mtd_size=7929856
@@ -327,6 +333,8 @@ Image/Build/Profile/F7C027=$(call BuildFirmware/CustomFlash/$(1),$(1),belkinf7c0
 Image/Build/Profile/FONERA20N=$(call BuildFirmware/Edimax/$(1),$(1),fonera20n,FONERA20N,$(ralink_default_fw_size_8M),RSDK,NL1T,0x50000,0xc0000)
 
 Image/Build/Profile/RT-N13U=$(call BuildFirmware/Default8M/$(1),$(1),rt-n13u,RT-N13U)
+
+#Image/Build/Profile/HG255D=$(call BuildFirmware/Default16M/$(1),$(1),hg255d,HG255D)
 
 Image/Build/Profile/FREESTATION5=$(call BuildFirmware/Default8M/$(1),$(1),freestation5,FREESTATION5)
 
@@ -442,6 +450,7 @@ define Image/Build/Profile/Default
 	$(call Image/Build/Profile/ALL5003,$(1))
 	$(call Image/Build/Profile/ARGUS_ATP52B,$(1))
 	$(call Image/Build/Profile/ASL26555,$(1))
+	$(call Image/Build/Profile/AWM002-EVB,$(1))
 	$(call Image/Build/Profile/BC2,$(1))
 	$(call Image/Build/Profile/BROADWAY,$(1))
 	$(call Image/Build/Profile/CARAMBOLA,$(1))
@@ -460,6 +469,7 @@ define Image/Build/Profile/Default
 	$(call Image/Build/Profile/F5D8235V2,$(1))
 	$(call Image/Build/Profile/FONERA20N,$(1))
 	$(call Image/Build/Profile/FREESTATION5,$(1))
+#	$(call Image/Build/Profile/HG255D,$(1))
 	$(call Image/Build/Profile/HW550-3G,$(1))
 	$(call Image/Build/Profile/MOFI3500-3GN,$(1))
 	$(call Image/Build/Profile/MPRA2,$(1))
