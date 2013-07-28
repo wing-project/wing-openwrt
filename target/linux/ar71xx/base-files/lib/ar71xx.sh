@@ -85,6 +85,9 @@ tplink_board_detect() {
 	"070300"*)
 		model="TP-Link TL-WR703N"
 		;;
+	"071000"*)
+		model="TP-Link TL-WR710N"
+		;;
 	"072001"*)
 		model="TP-Link TL-WR720N"
 		;;
@@ -161,6 +164,9 @@ tplink_board_detect() {
 		;;
 	"431000"*)
 		model="TP-Link TL-WDR4310"
+		;;
+	"453000"*)
+		model="MERCURY MW4530R"
 		;;
 	*)
 		hwver=""
@@ -494,6 +500,9 @@ ar71xx_board_detect() {
 		;;
 	*WNR2000)
 		name="wnr2000"
+		;;
+	*"WNR612 V2")
+		name="wnr612-v2"
 		;;
 	*WRT160NL)
 		name="wrt160nl"
