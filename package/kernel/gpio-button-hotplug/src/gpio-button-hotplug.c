@@ -274,15 +274,21 @@ struct gpio_keys_polled_dev {
 	struct gpio_keys_button_data data[0];
 };
 
+static inline int gpio_button_get_value(struct gpio_keys_button *button,
+			  struct gpio_keys_button_data *bdata)
+{
+	if (bdata->can_sleep)
+		return !!gpio_get_value_cansleep(button->gpio);
+	else
+		return !!gpio_get_value(button->gpio);
+}
+
 static void gpio_keys_polled_check_state(struct gpio_keys_button *button,
 					 struct gpio_keys_button_data *bdata)
 {
 	int state;
 
-	if (bdata->can_sleep)
-		state = !!gpio_get_value_cansleep(button->gpio);
-	else
-		state = !!gpio_get_value(button->gpio);
+	state = gpio_button_get_value(button, bdata);
 
 	state = !!(state ^ button->active_low);
 	if (state != bdata->last_state) {
@@ -503,7 +509,7 @@ static int gpio_keys_polled_probe(struct platform_device *pdev)
 		}
 
 		bdata->can_sleep = gpio_cansleep(gpio);
-		bdata->last_state = 0;
+		bdata->last_state = gpio_button_get_value(button, bdata);
 		bdata->threshold = DIV_ROUND_UP(button->debounce_interval,
 						pdata->poll_interval);
 	}
