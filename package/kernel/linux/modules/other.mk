@@ -289,7 +289,7 @@ define KernelPackage/ssb
 	CONFIG_SSB_SPROM=y \
 	CONFIG_SSB_SILENT=y
   FILES:=$(LINUX_DIR)/drivers/ssb/ssb.ko
-  AUTOLOAD:=$(call AutoLoad,29,ssb)
+  AUTOLOAD:=$(call AutoLoad,18,ssb,1)
 endef
 
 define KernelPackage/ssb/description
@@ -309,6 +309,7 @@ define KernelPackage/bcma
 	CONFIG_BCMA_BLOCKIO=y \
 	CONFIG_BCMA_HOST_PCI_POSSIBLE=y \
 	CONFIG_BCMA_HOST_PCI=y \
+	CONFIG_BCMA_HOST_SOC=n \
 	CONFIG_BCMA_DRIVER_MIPS=n \
 	CONFIG_BCMA_DRIVER_PCI_HOSTMODE=n \
 	CONFIG_BCMA_DRIVER_GMAC_CMN=n \
