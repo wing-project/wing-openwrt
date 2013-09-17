@@ -10,4 +10,4 @@ src-git telephony http://feeds.openwrt.nanl.de/openwrt/telephony.git
 #src-svn xfce svn://svn.openwrt.org/openwrt/feeds/xfce
 #src-svn lxde svn://svn.openwrt.org/openwrt/feeds/lxde
 #src-link custom /usr/src/openwrt/custom-feed
-src-git openwrt-packages git://github.com/rriggio/openwrt-packages.git
+src-git openwrtpackages git://github.com/rriggio/openwrt-packages.git
